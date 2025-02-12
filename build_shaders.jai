@@ -23,6 +23,7 @@ compile_shader :: (path: string) {
     output_file := tprint("%.spv", path);
     metadata_file := tprint("%.json", path);
     
+    // run_command("glslang", "-gVS", "-V", path, "-o", output_file, working_directory = "bin/shaders", capture_and_return_output = false, arg_quoting = .QUOTE_IF_NEEDED);
     run_command("glslang", "-V", path, "-o", output_file, working_directory = "bin/shaders", capture_and_return_output = false, arg_quoting = .QUOTE_IF_NEEDED);
     log("% > %", path, output_file);
     run_command("shadercross", output_file, "-o", metadata_file, working_directory = "bin/shaders", capture_and_return_output = false, arg_quoting = .QUOTE_IF_NEEDED);

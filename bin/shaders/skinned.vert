@@ -1,4 +1,6 @@
 #version 450 core
+#extension GL_ARB_shading_language_include : require
+#include "common.glsl"
  
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal;
@@ -7,12 +9,19 @@ layout(location = 3) in vec4 aColor;
 layout(location = 4) in uvec4 joints;
 layout(location = 5) in vec4 weights;
 
-layout(set = 0, binding = 0) uniform CameraData_t {
+struct Light {
+    int kind;
+    vec3 position;
+    vec3 target;
+    vec4 color;
+};
+
+layout(set = FRAG_UNIFORM_SET, binding = 0) uniform CameraData_t { 
     mat4 proj;
     mat4 view;
-    mat4 light;
+    mat4 sun;
     uint light_count;
-    vec4 light_dir[16];
+    Light lights[16];
 } CameraData;
 
 layout(set = 3, binding = 0) uniform InstanceData_t {
@@ -47,6 +56,6 @@ void main() {
     Out.color = aColor;
     Out.normal = mat3(inv_skin) * aNormal;    
     Out.uv = aUv;
-    Out.pos_light_space = CameraData.light * world_pos;
+    Out.pos_light_space = CameraData.sun * world_pos;
     Out.world_position = world_pos;
 }

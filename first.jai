@@ -11,9 +11,11 @@ build :: () {
 
     w := compiler_create_workspace();
     options := get_build_options(w);
+    copy_commonly_propagated_fields(get_build_options(), *options);
     options.output_executable_name = "out";
     options.output_path = "bin";
-    copy_commonly_propagated_fields(get_build_options(), *options);
+    set_build_options(options, w);
+
     #if OS == .LINUX {
     } else #if OS == .MACOS {
         options.additional_linker_arguments = .["-framework", "Metal", "-framework", "QuartzCore"];

@@ -12,17 +12,25 @@ layout(location = 0) in struct {
 
 layout(location = 0) out vec4 out_color;
 
+struct Light {
+    int kind;
+    vec3 position;
+    vec3 target;
+    vec4 color;
+};
+
 layout(set = FRAG_UNIFORM_SET, binding = 0) uniform CameraBuffer {
     mat4 proj;
     mat4 view;
-    mat4 light;
-    vec4 light_dir[16];
+    mat4 sun;
     uint light_count;
+    Light lights[16];
 };
+
 layout(set = FRAG_SAMPLER_SET, binding = 0) uniform sampler2D shadow_map;
 layout(set = FRAG_SAMPLER_SET, binding = 1) uniform sampler2D diffuse;
 
-const int pcf_count = 0;
+const int pcf_count = 4;
 const int pcf_total_texels = (pcf_count * 2 + 1) * (pcf_count * 2 + 1);
 const float map_size = 2048.0;
 const float texel_size = 1.0 / map_size;
@@ -32,12 +40,12 @@ const float constant = 1.0;
 const float linear = 0.5;
 const float quadratic = 0.02;
 
-float shadow(vec4 shadow_coord) {
+float shadow(vec4 shadow_coord, vec3 l) {
     vec3 proj_coords = In.pos_light_space.xyz / In.pos_light_space.w;
     vec2 uv = proj_coords.xy * 0.5 + 0.5;
     uv.y = 1 - uv.y;
     float current = proj_coords.z;
-    float x = 1.0 - max(dot(In.normal, light_dir[0].xyz), 0.0);
+    float x = 1.0 - max(dot(In.normal, l), 0.0);
     float bias = max(2.5 * x, 1.0) * texel_size;
 
     int total = 0;
@@ -56,7 +64,7 @@ float shadow(vec4 shadow_coord) {
 float point_light(vec3 frag_pos) {
     float acc = 0;
     for(uint i = 0; i < light_count; i++) {
-        vec3 light_pos = light_dir[i].xyz;
+        vec3 light_pos = lights[i].position.xyz;
         float distance = length(light_pos - frag_pos);
         acc += 1.0 / (constant + linear * distance + quadratic * (distance * distance));
     }
@@ -65,9 +73,9 @@ float point_light(vec3 frag_pos) {
 
 void main() {
     vec3 iterated_color = In.color.rgb * texture(diffuse, In.uv).rgb;
-    vec3 l = light_dir[0].xyz;
+    vec3 l = normalize(vec3(sun[0][2], sun[1][2], sun[2][2]));
     float n_dot_l = max(dot(In.normal, -l), 0.0);
-    float shadow = shadow(In.pos_light_space);
+    float shadow = shadow(In.pos_light_space, l);
     float factor = max(min(shadow, sqrt(n_dot_l)), 0.2);
     vec3 ambient = ambient_color * 0.1;
     iterated_color = ambient * (1.0 - factor) + iterated_color * factor;
