@@ -70,6 +70,12 @@ game_state_input_event :: (using state: *Game_State, event: SDL_Event) {
 
 game_state_draw :: (using state: *Game_State, frame_data: Frame_Data) {
     sun_dir := unit_vector(.{-1, -1, -1});
+    lights : [16]Light;
+    lights[0] = .{
+        .DIRECTIONAL,
+        sun_dir,
+        .{1, 1, 1, 1},
+    };
 
     size:: 40;
     light_proj := orthographic_projection_matrix(-size, size, -size, size, -size, size, true);
@@ -81,7 +87,8 @@ game_state_draw :: (using state: *Game_State, frame_data: Frame_Data) {
         projection = transpose(global_renderer.projection),
         view = transpose(view),
         sun = transpose(light_matrix),
-        light_count = 0,
+        lights = lights,
+        light_count = 1,
     };
 
     shadow_matrices := matrices;
@@ -117,6 +124,14 @@ draw_scene :: (using state: *Game_State, render_pass: *SDL_GPURenderPass, cmd: *
     SDL_BindGPUFragmentSamplers(render_pass, 1, *binding, 1);
     for y: 0..10 {
         for x: 0..10 {
+            
+            mat := PBR_Material.{
+                .{1, 1, 1},
+                y / 10.0,
+                x / 10.0,
+                0.5,
+            };
+            SDL_PushGPUFragmentUniformData(cmd, 1, *mat, size_of(type_of(mat)));
             push_transform(make_translation_matrix4(.{xx (x * 5), xx (y * 5), 0}), cmd);
             draw(sphere_mesh, render_pass);
         }
