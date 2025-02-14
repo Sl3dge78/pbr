@@ -12,18 +12,8 @@ layout(location = 0) in struct {
 
 layout(location = 0) out vec4 out_color;
 
-struct Light {
-    int kind;
-    vec3 position_or_direction;
-    vec4 color;
-};
-
-layout(set = FRAG_UNIFORM_SET, binding = 0) uniform CameraBuffer {
-    mat4 proj;
-    mat4 view;
-    mat4 sun;
-    uint light_count;
-    Light lights[16];
+layout(set = FRAG_UNIFORM_SET, binding = 0) uniform CameraData_t {
+    CameraData camera;
 };
 
 layout(set = FRAG_UNIFORM_SET, binding = 1) uniform Material_t {
@@ -101,26 +91,26 @@ void main() {
 
     vec3 position = In.world_position.xyz;
     vec3 normal = normalize(In.normal);
-    vec3 view = normalize(view[3].xyz - position);
+    vec3 view = normalize(camera.camera_position - position);
 
     vec3 F0 = mix(vec3(0.04), Material.albedo, Material.metallic);
 
     vec3 lo = vec3(0.0);
-    for(int i = 0; i < light_count; i++) {
+    for(int i = 0; i < camera.light_count; i++) {
+        Light light = camera.lights[i];
         vec3 light_dir;
-        float cos_theta = max(dot(normal, light_dir), 0.0);
 
         vec3 radiance;
-        if(lights[i].kind == 0) { // Directional
-            light_dir = lights[i].position_or_direction;
-            radiance = lights[i].color.xyz;
-
+        if(light.kind == 0) { // Directional
+            light_dir = -light.position_or_direction;
+            radiance = light.color.xyz;
         } else { // Point
-            light_dir = normalize(lights[i].position_or_direction - position);
-            float dist = length(lights[i].position_or_direction - position);
+            light_dir = normalize(light.position_or_direction - position);
+            float dist = length(light.position_or_direction - position);
             float attenuation = 1.0 / (dist * dist);
-            radiance = lights[i].color.xyz * attenuation;
+            radiance = light.color.xyz * attenuation;
         }
+        float cos_theta = max(dot(normal, light_dir), 0.0);
         
         vec3 half_way_vector = normalize(view + light_dir);
 
@@ -128,15 +118,14 @@ void main() {
         float G   = geometry(normal, view, light_dir, Material.roughness);
         vec3  F   = fresnel(max(dot(half_way_vector, view), 0.0), F0);
 
-        vec3 kS = F;
-        vec3 kD = vec3(1.0) - kS;
+        vec3 kD = vec3(1.0) - F;
         kD *= 1.0 - Material.metallic;
 
         vec3 a = NDF * G * F;
         float b = 4.0 * max(dot(normal, view), 0.0) * cos_theta;
-        vec3 specular = a / (b + 0.0001); // 0.0001 to avoid /0
+        vec3 specular = a / max(b, 0.0001); 
 
-        lo += (kD * (Material.albedo / PI) + specular) * radiance * cos_theta;
+        lo += (kD * Material.albedo / PI + specular) * radiance * cos_theta;
     }
 
     vec3 ambient = vec3(0.03) * Material.albedo * Material.ambient_occlusion;

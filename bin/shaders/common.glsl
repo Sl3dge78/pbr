@@ -26,3 +26,17 @@
 
 const float PI = 3.14159265359;
 
+struct Light {
+    int kind;
+    vec3 position_or_direction;
+    vec4 color;
+};
+
+struct CameraData {
+    mat4 proj;
+    mat4 view;
+    mat4 sun;
+    vec3 camera_position;
+    uint light_count;
+    Light lights[16];
+};

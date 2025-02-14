@@ -9,20 +9,7 @@ layout(location = 3) in vec4 aColor;
 layout(location = 4) in uvec4 joints;
 layout(location = 5) in vec4 weights;
 
-struct Light {
-    int kind;
-    vec3 position;
-    vec3 target;
-    vec4 color;
-};
-
-layout(set = FRAG_UNIFORM_SET, binding = 0) uniform CameraData_t { 
-    mat4 proj;
-    mat4 view;
-    mat4 sun;
-    uint light_count;
-    Light lights[16];
-} CameraData;
+layout(set = VTX_UNIFORM_SET, binding = 0) uniform CameraData_t { CameraData camera; };
 
 layout(set = 3, binding = 0) uniform InstanceData_t {
     mat4 joint_matrices[64];
@@ -49,13 +36,13 @@ void main() {
 		weights.w * InstanceData.joint_matrices[joints.w];
 
     vec4 world_pos = PushConstants.transform * skin_mat * vec4(aPos, 1.0);
-    gl_Position = CameraData.proj * (CameraData.view * world_pos);
+    gl_Position = camera.proj * (camera.view * world_pos);
 
     mat4 inv_skin = inverse(PushConstants.transform * skin_mat);
 
     Out.color = aColor;
     Out.normal = mat3(inv_skin) * aNormal;    
     Out.uv = aUv;
-    Out.pos_light_space = CameraData.sun * world_pos;
+    Out.pos_light_space = camera.sun * world_pos;
     Out.world_position = world_pos;
 }

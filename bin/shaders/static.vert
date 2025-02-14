@@ -12,20 +12,7 @@ layout(set = VTX_UNIFORM_SET, binding = 1) uniform constants {
     mat4 inv_transform;
 };
 
-struct Light {
-    int kind;
-    vec3 position;
-    vec3 target;
-    vec4 color;
-};
-
-layout(set = VTX_UNIFORM_SET, binding = 0) uniform CameraBuffer {
-    mat4 proj;
-    mat4 view;
-    mat4 sun;
-    uint light_count;
-    Light lights[16];
-};
+layout(set = VTX_UNIFORM_SET, binding = 0) uniform CameraData_t { CameraData camera; };
 
 layout(location = 0) out struct {
     vec4 color;
@@ -37,10 +24,10 @@ layout(location = 0) out struct {
 
 void main() {
     vec4 world_position = transform * vec4(in_pos, 1.0);
-    gl_Position = proj * view * world_position;
+    gl_Position = camera.proj * camera.view * world_position;
     Out.world_position = world_position;
     Out.color = in_color;
     Out.normal = mat3(transpose(inv_transform)) * in_normal;
     Out.uv = in_uv;
-    Out.pos_light_space = sun * world_position;
+    Out.pos_light_space = camera.sun * world_position;
 }
