@@ -14,7 +14,7 @@ void main() {
     
     vec3 up = vec3(0.0, 1.0, 0.0);
     vec3 right = normalize(cross(up, normal));
-    up = normalize(cross(normal, right)); // X doubt
+    up = normalize(cross(normal, right));
 
     float sample_delta = 0.025;
     int nb_samples = 0;
@@ -32,5 +32,6 @@ void main() {
     }
     irradiance = PI * irradiance * (1.0 / float(nb_samples));
     out_color = vec4(irradiance, 1.0);
+    out_color = vec4(texture(environment_map, normal).rgb, 1.0);
 }
 

@@ -24,7 +24,8 @@ layout(set = FRAG_UNIFORM_SET, binding = 1) uniform Material_t {
 } Material;
 
 layout(set = FRAG_SAMPLER_SET, binding = 0) uniform sampler2D shadow_map;
-layout(set = FRAG_SAMPLER_SET, binding = 1) uniform sampler2D diffuse;
+layout(set = FRAG_SAMPLER_SET, binding = 1) uniform samplerCube irradiance_map;
+layout(set = FRAG_SAMPLER_SET, binding = 2) uniform sampler2D diffuse;
 
 const int pcf_count = 4;
 const int pcf_total_texels = (pcf_count * 2 + 1) * (pcf_count * 2 + 1);
@@ -87,6 +88,10 @@ vec3 fresnel(float cos_theta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cos_theta, 0.0, 1.0), 5.0);
 }
 
+vec3 fresnel_roughness(float cos_theta, vec3 F0, float roughness) {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cos_theta, 0.0, 1.0), 5.0);
+}
+
 void main() {
 
     vec3 position = In.world_position.xyz;
@@ -123,19 +128,24 @@ void main() {
 
         vec3 a = NDF * G * F;
         float b = 4.0 * max(dot(normal, view), 0.0) * cos_theta;
-        vec3 specular = a / max(b, 0.0001); 
+        vec3 specular = a / (b + 0.0001); 
 
         lo += (kD * Material.albedo / PI + specular) * radiance * cos_theta;
     }
 
-    vec3 ambient = vec3(0.03) * Material.albedo * Material.ambient_occlusion;
+    // Ambient -- IBL
+    vec3 kS = fresnel_roughness(max(dot(normal, view), 0.0), F0, Material.roughness);
+    vec3 kD = 1.0 - kS;
+    // kD *= 1.0 - Material.metallic;
+    vec3 irradiance = texture(irradiance_map, normal).rgb;
+    vec3 diffuse = irradiance * Material.albedo;
+    vec3 ambient = (kD * diffuse) * Material.ambient_occlusion;
     vec3 color = ambient + lo;
 
     // Gamma
     color = color / (color + vec3(1.0));
     color = pow(color, vec3(1.0/2.2));
     out_color = vec4(color, 1.0);
-
     // vec3 iterated_color = In.color.rgb * texture(diffuse, In.uv).rgb;
     // float n_dot_l = max(dot(In.normal, -l), 0.0);
     // float shadow = shadow(In.pos_light_space, l);

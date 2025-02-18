@@ -40,3 +40,8 @@ struct CameraData {
     uint light_count;
     Light lights[16];
 };
+
+vec3 gamma(vec3 color) {
+    vec3 result = color / (color + vec3(1.0));
+    return pow(result, vec3(1.0/2.0));
+}

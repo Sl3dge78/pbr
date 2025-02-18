@@ -15,6 +15,7 @@
         "ui.frag",
         "skybox.vert",
         "skybox.frag",
+        "cubemap.vert",
         "irradiance.frag",
     ];
 
