@@ -15,6 +15,7 @@
         "ui.frag",
         "skybox.vert",
         "skybox.frag",
+        "irradiance.frag",
     ];
 
     for shaders {
