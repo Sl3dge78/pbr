@@ -5,6 +5,7 @@ Game_State :: struct {
     skybox: Cube_Map;
     irradiance_map: Cube_Map;
     unit_cube: Mesh;
+    unit_plane: Mesh;
 
     skybox_pipeline: *SDL_GPUGraphicsPipeline;
     irradiance_pipeline: *SDL_GPUGraphicsPipeline;
@@ -91,7 +92,7 @@ cube_map_from_files :: (folder: string) -> Cube_Map {
     height: s32;
     path := tprint("%/nx.hdr", folder);
     stbi_info(temp_c_string(path), *width, *height, *channels);
-    assert(channels == 3);
+    // assert(channels == 3);
 
     result_texture := empty_cube_map(width, height, format = CUBE_MAP_FORMAT, name = "Skybox");
 
@@ -189,8 +190,8 @@ game_state_create :: (using state: *Game_State) {
     sphere_mesh = load_mesh_from_file("res/sphere.glb");
     player.transform.position = .{25, 25, 75};
     offset : *Global_Matrices = xx 0;
-    skybox = cube_map_from_files("res/environment");
-    IRRADIANCE_SIZE :: 64;
+    skybox = cube_map_from_files("res/env2");
+    IRRADIANCE_SIZE :: 128;
     irradiance_map = empty_cube_map(IRRADIANCE_SIZE, IRRADIANCE_SIZE, format = CUBE_MAP_FORMAT, name = "Irradiance", usage = .SAMPLER | .COLOR_TARGET);
     {
         builder: Mesh_Builder;
@@ -201,6 +202,12 @@ game_state_create :: (using state: *Game_State) {
         mesh_builder_push_quad(*builder, .{-1, 1, 1}, .{1, 1, 1}, .{1, -1, 1}, .{-1, -1, 1}, .{0, 0, -1});
         mesh_builder_push_quad(*builder, .{-1, -1, -1}, .{1, -1, -1}, .{1, 1, -1}, .{-1, 1, -1}, .{0, 0, 1});
         unit_cube = mesh_builder_load_mesh(*builder);
+    }
+
+    {
+        builder: Mesh_Builder;
+        mesh_builder_push_quad(*builder, .{1, -1, -1}, .{1, -1, 1}, .{1, 1, 1 }, .{1, 1, -1 }, .{-1, 0, 0});
+        unit_plane = mesh_builder_load_mesh(*builder);
     }
 
     {
@@ -243,16 +250,15 @@ game_state_input_event :: (using state: *Game_State, event: SDL_Event) {
             show_skybox = !show_skybox;
         }
     }
-
 }
 
 game_state_draw :: (using state: *Game_State, frame_data: Frame_Data) {
     sun_dir := unit_vector(.{-1, -1, -1});
     lights : [16]Light;
-    lights[0] = .{ .POINT, .{-10, 10, 10}, .{300.0, 300.0, 300.0, 1}};
-    lights[1] = .{ .POINT, .{10, 10, 10}, .{300.0, 300.0, 300.0, 1}};
-    lights[2] = .{ .POINT, .{-10, -10, 10}, .{300.0, 300.0, 300.0, 1}};
-    lights[3] = .{ .POINT, .{10, -10, 10}, .{300.0, 300.0, 300.0, 1}};
+    lights[0] = .{ .POINT, .{-10, 10, 10}, .{300.0, 300.0, 300.0}};
+    lights[1] = .{ .POINT, .{10, 10, 10}, .{300.0, 300.0, 300.0}};
+    lights[2] = .{ .POINT, .{-10, -10, 10}, .{300.0, 300.0, 300.0}};
+    lights[3] = .{ .POINT, .{10, -10, 10}, .{300.0, 300.0, 300.0}};
 
     size:: 40;
     light_proj := orthographic_projection_matrix(-size, size, -size, size, -size, size, true);
@@ -327,7 +333,7 @@ draw_scene :: (using state: *Game_State, render_pass: *SDL_GPURenderPass, cmd: *
     for y: 0..10 {
         for x: 0..10 {
             mat := PBR_Material.{
-                albedo = .{1, 0, 0},
+                albedo = .{0.5, 0, 0},
                 roughness = x.(float) / 10.0,
                 metallic = y.(float) / 10.0,
                 ambient_occlusion = 1.0,

@@ -134,24 +134,17 @@ void main() {
     }
 
     // Ambient -- IBL
-    vec3 kS = fresnel_roughness(max(dot(normal, view), 0.0), F0, Material.roughness);
+    // vec3 kS = fresnel_roughness(max(dot(normal, view), 0.0), F0, Material.roughness);
+    vec3 kS = fresnel(max(dot(normal, view), 0.0), F0);
     vec3 kD = 1.0 - kS;
     // kD *= 1.0 - Material.metallic;
     vec3 irradiance = texture(irradiance_map, normal).rgb;
     vec3 diffuse = irradiance * Material.albedo;
     vec3 ambient = (kD * diffuse) * Material.ambient_occlusion;
     vec3 color = ambient + lo;
+    // vec3 color = lo;
 
     // Gamma
-    color = color / (color + vec3(1.0));
-    color = pow(color, vec3(1.0/2.2));
     out_color = vec4(color, 1.0);
-    // vec3 iterated_color = In.color.rgb * texture(diffuse, In.uv).rgb;
-    // float n_dot_l = max(dot(In.normal, -l), 0.0);
-    // float shadow = shadow(In.pos_light_space, l);
-    // float factor = max(min(shadow, sqrt(n_dot_l)), 0.2);
-    // vec3 ambient = ambient_color * 0.1;
-    // iterated_color = ambient * (1.0 - factor) + iterated_color * factor;
-    // out_color = vec4(iterated_color, 1);
 }
 

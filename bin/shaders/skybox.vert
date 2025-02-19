@@ -9,7 +9,7 @@ layout(set = VTX_UNIFORM_SET, binding = 0) uniform CameraData_t { CameraData cam
 
 void main() {
     Out.uv = in_pos;
-    // Out.uv.x *= -1.0;
+    Out.uv.x *= -1.0;
     mat4 view = mat4(mat3(camera.view));
     vec4 pos = camera.proj * view * vec4(in_pos, 1.0);
     gl_Position = pos.xyzz;
