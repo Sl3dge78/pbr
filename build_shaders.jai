@@ -1,22 +1,35 @@
 #import "Compiler";
-#import "Process";
 #import "Basic";
+#import "sl3dge-jai";
 
 #run {
     set_build_options_dc(.{do_output = false});
+    compile_shader("noop.frag");
+    export_material("static_mesh", "static.vert", "color.frag", .{
+        vertex_type = "Standard_Vertex",
+        color_target = .{"swapchain", false},
+        depth_target = true
+    });
+    export_pipeline("skybox", "skybox.vert", "skybox.frag", .{
+        vertex_type = "Standard_Vertex",
+        color_target = .{"swapchain", false},
+        depth_target = false
+    });
+    export_pipeline("irradiance", "cubemap.vert", "irradiance.frag", .{
+        vertex_type = "Standard_Vertex",
+        color_target = .{"R32G32B32A32_FLOAT", false},
+        depth_target = false
+    });
+    export_pipeline("ui", "ui.vert", "ui.frag", .{
+        vertex_type = "UI_Vertex",
+        color_target = .{"swapchain", true},
+        depth_target = false
+    });
+
     shaders := string.[
-        "color.frag", 
         "skinned.vert",
-        "static.vert",
         "static_inst.vert",
-        "noop.frag",
         "ducks.comp",
-        "ui.vert",
-        "ui.frag",
-        "skybox.vert",
-        "skybox.frag",
-        "cubemap.vert",
-        "irradiance.frag",
     ];
 
     for shaders {
@@ -24,16 +37,4 @@
     }
 }
 
-compile_shader :: (path: string) {
-    output_file := tprint("%.spv", path);
-    metadata_file := tprint("%.json", path);
-    
-    if false {
-        run_command("glslang", "-gVS", "-V", path, "-o", output_file, working_directory = "bin/shaders", capture_and_return_output = false, arg_quoting = .QUOTE_IF_NEEDED);
-    } else {
-        run_command("glslang", "-V", path, "-o", output_file, working_directory = "bin/shaders", capture_and_return_output = false, arg_quoting = .QUOTE_IF_NEEDED);
-    }
-    log("% > %", path, output_file);
-    run_command("shadercross", output_file, "-o", metadata_file, working_directory = "bin/shaders", capture_and_return_output = false, arg_quoting = .QUOTE_IF_NEEDED);
-    log("% > %", path, metadata_file);
-}
+

@@ -7,10 +7,8 @@ Game_State :: struct {
     unit_cube: Mesh;
     unit_plane: Mesh;
 
-    skybox_pipeline: *SDL_GPUGraphicsPipeline;
-    irradiance_pipeline: *SDL_GPUGraphicsPipeline;
-
     show_skybox := true;
+    time : float;
 }
 
 CUBE_MAP_FORMAT :: SDL_GPUTextureFormat.R32G32B32A32_FLOAT;
@@ -26,7 +24,7 @@ Player :: struct {
 
 Cube_Map :: *SDL_GPUTexture;
 
-render_irradiance :: (irradiance_pipeline: *SDL_GPUGraphicsPipeline, unit_cube: Mesh, source: Cube_Map, target: Cube_Map) {
+render_irradiance :: (irradiance_pipeline: *SDL_GPUGraphicsPipeline, unit_cube: Mesh, source: Cube_Map, target: Cube_Map, time: float) {
     projection := make_projection_matrix(radians(90), 1, 0.0001, 10);
     views := Matrix4.[
         make_look_at_matrix(.{0, 0, 0}, .{-1, 0, 0}, .{0, 1, 0}, false),
@@ -54,6 +52,7 @@ render_irradiance :: (irradiance_pipeline: *SDL_GPUGraphicsPipeline, unit_cube: 
             camera_position = .{0, 0, 0},
             projection = transpose(projection),
             view = transpose(views[it]),
+            time = time,
         };
 
         pass := SDL_NullCheck(SDL_BeginGPURenderPass(cmd, *color_target, 1, null));
@@ -67,7 +66,7 @@ render_irradiance :: (irradiance_pipeline: *SDL_GPUGraphicsPipeline, unit_cube: 
         SDL_BindGPUFragmentSamplers(pass, 0, *binding, 1);
         draw(unit_cube, pass);
     }
-
+    log("Irradiance rendered");
 }
 
 empty_cube_map :: (width: int, height: int, format : SDL_GPUTextureFormat, usage: SDL_GPUTextureUsageFlags = .SAMPLER, name: string = "") -> Cube_Map {
@@ -190,8 +189,8 @@ game_state_create :: (using state: *Game_State) {
     sphere_mesh = load_mesh_from_file("res/sphere.glb");
     player.transform.position = .{25, 25, 75};
     offset : *Global_Matrices = xx 0;
-    skybox = cube_map_from_files("res/env2");
-    IRRADIANCE_SIZE :: 128;
+    skybox = cube_map_from_files("res/env3");
+    IRRADIANCE_SIZE :: 32;
     irradiance_map = empty_cube_map(IRRADIANCE_SIZE, IRRADIANCE_SIZE, format = CUBE_MAP_FORMAT, name = "Irradiance", usage = .SAMPLER | .COLOR_TARGET);
     {
         builder: Mesh_Builder;
@@ -210,44 +209,47 @@ game_state_create :: (using state: *Game_State) {
         unit_plane = mesh_builder_load_mesh(*builder);
     }
 
-    {
-        builder: Pipeline_Builder;
-        add_shader(*builder, global_renderer.device, "shaders/skybox.vert.spv");
-        add_shader(*builder, global_renderer.device, "shaders/skybox.frag.spv");
-        add_vertex_type(*builder, Standard_Vertex);
-        add_color_target(*builder, global_renderer.swapchain_format, false);
-        skybox_pipeline = build_pipeline(*builder, global_renderer.device);
-    }
+    render_irradiance(resources.irradiance, unit_cube, skybox, irradiance_map, 0);
+    resources.on_reload = on_resources_reload;
+    resources.data = state;
+}
 
-    {
-        builder: Pipeline_Builder;
-        add_shader(*builder, global_renderer.device, "shaders/cubemap.vert.spv");
-        add_shader(*builder, global_renderer.device, "shaders/irradiance.frag.spv");
-        add_vertex_type(*builder, Standard_Vertex);
-        add_color_target(*builder, CUBE_MAP_FORMAT, false);
-        irradiance_pipeline = build_pipeline(*builder, global_renderer.device);
+on_resources_reload :: (r: *Resource_Info, data: *void) {
+    using game_state := data.(*Game_State);
+    game_state.time = 0;
+    if r.pointer == *resources.irradiance { 
+        render_irradiance(resources.irradiance, unit_cube, skybox, irradiance_map, time);
     }
-
-    render_irradiance(irradiance_pipeline, unit_cube, skybox, irradiance_map);
 }
 
 game_state_destroy :: (using state: *Game_State) {
     destroy(*sphere_mesh);
-    SDL_ReleaseGPUGraphicsPipeline(global_renderer.device, skybox_pipeline);
     destroy(skybox);
     destroy(irradiance_map);
-    SDL_ReleaseGPUGraphicsPipeline(global_renderer.device, irradiance_pipeline);
     destroy(*unit_cube);
 }
 
 game_state_update :: (using state: *Game_State, delta_time: float) {
     player_update(*player, state, delta_time);
+    time += delta_time;
 }
 
 game_state_input_event :: (using state: *Game_State, event: SDL_Event) {
     if(event.type == .KEY_DOWN) {
         if(event.key.scancode == .B) {
             show_skybox = !show_skybox;
+        }
+        if event.key.scancode == ._1 {
+            skybox = cube_map_from_files("res/env1");
+            render_irradiance(resources.irradiance, unit_cube, skybox, irradiance_map, time);
+        }
+        if event.key.scancode == ._2 {
+            skybox = cube_map_from_files("res/env2");
+            render_irradiance(resources.irradiance, unit_cube, skybox, irradiance_map, time);
+        }
+        if event.key.scancode == ._3 {
+            skybox = cube_map_from_files("res/env3");
+            render_irradiance(resources.irradiance, unit_cube, skybox, irradiance_map, time);
         }
     }
 }
@@ -273,6 +275,7 @@ game_state_draw :: (using state: *Game_State, frame_data: Frame_Data) {
         sun = transpose(light_matrix),
         lights = lights,
         light_count = 4,
+        time = time,
     };
 
     shadow_matrices := matrices;
@@ -293,6 +296,7 @@ game_state_draw :: (using state: *Game_State, frame_data: Frame_Data) {
         render_pass := SDL_NullCheck(SDL_BeginGPURenderPass(frame_data.cmd, *target, 1, null));
         defer SDL_EndGPURenderPass(render_pass);
 
+        SDL_BindGPUGraphicsPipeline(render_pass, resources.skybox);
         SDL_PushGPUVertexUniformData(frame_data.cmd, 0, *matrices, size_of(type_of(matrices)));
         SDL_PushGPUFragmentUniformData(frame_data.cmd, 0, *matrices, size_of(type_of(matrices)));
 
@@ -303,7 +307,6 @@ game_state_draw :: (using state: *Game_State, frame_data: Frame_Data) {
              binding := SDL_GPUTextureSamplerBinding.{ skybox, global_renderer.sampler };
             SDL_BindGPUFragmentSamplers(render_pass, 0, *binding, 1);
         }
-        SDL_BindGPUGraphicsPipeline(render_pass, skybox_pipeline);
         draw(unit_cube, render_pass);
     }
 
@@ -327,19 +330,24 @@ game_state_draw :: (using state: *Game_State, frame_data: Frame_Data) {
 
 draw_scene :: (using state: *Game_State, render_pass: *SDL_GPURenderPass, cmd: *SDL_GPUCommandBuffer, kind: Pipeline_Kind) {
 
-    SDL_BindGPUGraphicsPipeline(render_pass, global_renderer.static_mesh_material.pipelines[kind]);
+    SDL_BindGPUGraphicsPipeline(render_pass, resources.static_mesh.pipelines[kind]);
     binding := SDL_GPUTextureSamplerBinding.{ global_renderer.empty_texture, global_renderer.sampler };
     SDL_BindGPUFragmentSamplers(render_pass, 2, *binding, 1);
-    for y: 0..10 {
-        for x: 0..10 {
+    nb_x := 7;
+    nb_y := 7;
+    spacing := 2.5;
+    for y: 0..nb_x-1 {
+        for x: 0..nb_y-1{
             mat := PBR_Material.{
                 albedo = .{0.5, 0, 0},
-                roughness = x.(float) / 10.0,
-                metallic = y.(float) / 10.0,
+                roughness = x.(float) / nb_x,
+                metallic = y.(float) / nb_y,
                 ambient_occlusion = 1.0,
             };
             SDL_PushGPUFragmentUniformData(cmd, 1, *mat, size_of(type_of(mat)));
-            push_transform(make_translation_matrix4(.{xx ((x - (10 / 2)) * 5), xx ((y - (10 / 2)) * 5), 0}), cmd);
+            x2 : float = (x - (nb_x / 2)) * spacing;
+            y2 : float = (y - (nb_y / 2)) * spacing;
+            push_transform(make_translation_matrix4(.{x2, y2, -2}), cmd);
             draw(sphere_mesh, render_pass);
         }
     }

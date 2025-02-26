@@ -1,0 +1,10 @@
+{
+	"vertex_shader": "res/shaders/cubemap.vert.spv",
+	"fragment_shader": "res/shaders/irradiance.frag.spv",
+	"vertex_type": "Standard_Vertex",
+	"color_target": {
+		"format": "R32G32B32A32_FLOAT",
+		"blend": false
+	},
+	"depth_target": false
+}

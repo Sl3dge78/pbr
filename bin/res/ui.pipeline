@@ -1,0 +1,10 @@
+{
+	"vertex_shader": "res/shaders/ui.vert.spv",
+	"fragment_shader": "res/shaders/ui.frag.spv",
+	"vertex_type": "UI_Vertex",
+	"color_target": {
+		"format": "swapchain",
+		"blend": true
+	},
+	"depth_target": false
+}

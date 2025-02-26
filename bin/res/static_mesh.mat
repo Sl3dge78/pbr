@@ -1,0 +1,10 @@
+{
+	"vertex_shader": "res/shaders/static.vert.spv",
+	"fragment_shader": "res/shaders/color.frag.spv",
+	"vertex_type": "Standard_Vertex",
+	"color_target": {
+		"format": "swapchain",
+		"blend": false
+	},
+	"depth_target": true
+}

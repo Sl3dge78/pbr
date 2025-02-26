@@ -10,6 +10,10 @@ layout(set = FRAG_SAMPLER_SET, binding = 0) uniform samplerCube skybox;
 
 void main() {
     vec3 color = texture(skybox, In.uv).rgb;
-    out_color = vec4(color, 1.0);
+    if (color.x > 1.0 || color.y > 1.0 || color.z > 1.0) {
+        out_color = vec4(1.0, 0.0, 0.0, 1.0);
+    } else { 
+        out_color = vec4(color, 1.0);
+    }
 }
 

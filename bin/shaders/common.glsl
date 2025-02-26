@@ -39,6 +39,7 @@ struct CameraData {
     vec3 camera_position;
     uint light_count;
     Light lights[16];
+    float time;
 };
 
 vec3 gamma(vec3 color) {
