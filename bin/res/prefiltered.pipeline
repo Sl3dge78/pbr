@@ -1,22 +1,22 @@
 {
-	"vertex_shader": "shaders/ui.vert",
+	"vertex_shader": "shaders/cubemap.vert",
 	"vertex_info": {
 		"samplers": 0,
 		"storageTextures": 0,
 		"storageBuffers": 0,
 		"uniformBuffers": 1
 	},
-	"fragment_shader": "shaders/ui.frag",
+	"fragment_shader": "shaders/prefiltered_map.frag",
 	"fragment_info": {
 		"samplers": 1,
 		"storageTextures": 0,
 		"storageBuffers": 0,
-		"uniformBuffers": 0
+		"uniformBuffers": 1
 	},
-	"vertex_type": "UI_Vertex",
+	"vertex_type": "Standard_Vertex",
 	"color_target": {
-		"format": "swapchain",
-		"blend": true
+		"format": "R32G32B32A32_FLOAT",
+		"blend": false
 	},
 	"depth_target": false
 }

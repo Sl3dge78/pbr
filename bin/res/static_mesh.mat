@@ -1,6 +1,18 @@
 {
-	"vertex_shader": "res/shaders/static.vert.spv",
-	"fragment_shader": "res/shaders/color.frag.spv",
+	"vertex_shader": "shaders/static.vert",
+	"vertex_info": {
+		"samplers": 0,
+		"storageTextures": 0,
+		"storageBuffers": 0,
+		"uniformBuffers": 2
+	},
+	"fragment_shader": "shaders/color.frag",
+	"fragment_info": {
+		"samplers": 3,
+		"storageTextures": 0,
+		"storageBuffers": 0,
+		"uniformBuffers": 2
+	},
 	"vertex_type": "Standard_Vertex",
 	"color_target": {
 		"format": "swapchain",

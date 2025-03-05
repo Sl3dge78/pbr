@@ -9,11 +9,7 @@ layout(set = FRAG_UNIFORM_SET, binding = 0) uniform CameraData_t { CameraData ca
 layout(set = FRAG_SAMPLER_SET, binding = 0) uniform samplerCube skybox;
 
 void main() {
-    vec3 color = texture(skybox, In.uv).rgb;
-    if (color.x > 1.0 || color.y > 1.0 || color.z > 1.0) {
-        out_color = vec4(1.0, 0.0, 0.0, 1.0);
-    } else { 
-        out_color = vec4(color, 1.0);
-    }
+    vec3 color = textureLod(skybox, In.uv, 1.2).rgb;
+    out_color = vec4(color, 1.0);
 }
 
