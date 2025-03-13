@@ -50,6 +50,10 @@
         color_target = .{"swapchain", true},
         depth_target = false
     });
+    export_compute_pipeline("brdf_convolution", .{
+        shader = "shaders/brdf_convolution.comp",
+        metadata = .{ readWriteStorageTextures = 1 },
+    });
 
     shaders := string.[
         "shaders/skinned.vert",

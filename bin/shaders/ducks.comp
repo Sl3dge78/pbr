@@ -14,7 +14,6 @@ layout(set = COMP_READONLY_BUFFER_SET, binding = 0) buffer InstanceBuffer {
     InstanceData data[];
 };
 
-
 layout(set = COMP_UNIFORM_BUFFER_SET, binding = 0) uniform GlobalData {
     float delta_time;
     float area_size;

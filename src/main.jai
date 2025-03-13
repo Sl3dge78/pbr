@@ -6,6 +6,10 @@ Game_State :: struct {
     irradiance_map: Cube_Map;
     prefiltered_map: Cube_Map;
     prefiltered_sampler: *SDL_GPUSampler;
+
+    BRDF_SIZE :: 512;
+    precomputed_brdf: *SDL_GPUTexture;
+
     unit_cube: Mesh;
     unit_plane: Mesh;
 
@@ -35,9 +39,12 @@ game_state_create :: (using state: *Game_State) {
     player.transform.position = .{25, 25, 75};
     offset : *Global_Matrices = xx 0;
     skybox = cube_map_from_files("res/env3");
+
     IRRADIANCE_SIZE :: 32;
     irradiance_map = empty_cube_map(IRRADIANCE_SIZE, IRRADIANCE_SIZE, format = CUBE_MAP_FORMAT, name = "Irradiance", usage = .SAMPLER | .COLOR_TARGET);
+
     prefiltered_map = empty_cube_map(PREFILTERED_SIZE, PREFILTERED_SIZE, format = CUBE_MAP_FORMAT, name = "Prefiltered Env Map", usage = .SAMPLER | .COLOR_TARGET, mips = PREFILTERED_MIPS);
+
     sampler_ci := SDL_GPUSamplerCreateInfo.{
         min_filter = .LINEAR,
         mag_filter = .LINEAR,
@@ -72,6 +79,20 @@ game_state_create :: (using state: *Game_State) {
         unit_plane = mesh_builder_load_mesh(*builder);
     }
 
+    texture_ci := SDL_GPUTextureCreateInfo.{
+        type = ._2D,
+        format = .R16G16_FLOAT,
+        usage = .SAMPLER | .COMPUTE_STORAGE_WRITE,
+        width = BRDF_SIZE,
+        height = BRDF_SIZE,
+        layer_count_or_depth = 1,
+        num_levels = 1,
+        sample_count = ._1,
+        props = 0,
+    };
+    precomputed_brdf = SDL_CreateGPUTexture(global_renderer.device, *texture_ci);
+    SDL_SetGPUTextureName(global_renderer.device, precomputed_brdf, "precomputed_brdf");
+
     resources.on_reload = on_resources_reload;
     resources.data = state;
     init_scene_lighting(state);
@@ -89,6 +110,7 @@ on_resources_reload :: (r: *Resource_Info, data: *void) {
 }
 
 game_state_destroy :: (using state: *Game_State) {
+    destroy(precomputed_brdf);
     destroy(*sphere_mesh);
     destroy(skybox);
     destroy(irradiance_map);

@@ -2,6 +2,22 @@
 init_scene_lighting :: (using game_state: *Game_State) {
     render_irradiance(unit_cube, skybox, irradiance_map, 0);
     render_prefiltered_map(unit_cube, skybox, prefiltered_map);
+    render_brdf(game_state);
+}
+
+render_brdf :: (using game_state: *Game_State) {
+    cmd := SDL_AcquireGPUCommandBuffer(global_renderer.device);
+    defer SDL_SubmitGPUCommandBuffer(cmd);
+    
+    binding := SDL_GPUStorageTextureReadWriteBinding.{
+        texture = precomputed_brdf,
+        mip_level = 0, layer = 0, cycle = false
+    };
+    pass := SDL_BeginGPUComputePass(cmd, *binding, 1, null, 0);
+    defer SDL_EndGPUComputePass(pass);
+
+    SDL_BindGPUComputePipeline(pass, resources.brdf_convolution);
+    SDL_DispatchGPUCompute(pass, BRDF_SIZE, BRDF_SIZE, 1);
 }
 
 render_irradiance :: (unit_cube: Mesh, source: Cube_Map, target: Cube_Map, time: float) {
