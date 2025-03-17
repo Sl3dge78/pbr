@@ -9,7 +9,7 @@
         vertex_shader = "shaders/static.vert",
         vertex_info = .{0, 0, 0, 2},
         fragment_shader = "shaders/color.frag", 
-        fragment_info = .{3, 0, 0, 2},
+        fragment_info = .{samplers = 5, storageTextures = 0, storageBuffers = 0, uniformBuffers = 2},
         vertex_type = "Standard_Vertex",
         color_target = .{"swapchain", false},
         depth_target = true
@@ -45,6 +45,15 @@
         vertex_shader = "shaders/ui.vert",
         vertex_info = .{0, 0, 0, 1},
         fragment_shader = "shaders/ui.frag", 
+        fragment_info = .{1, 0, 0, 0},
+        vertex_type = "UI_Vertex",
+        color_target = .{"swapchain", true},
+        depth_target = false
+    });
+    export_pipeline("sprites", .{
+        vertex_shader = "shaders/ui.vert",
+        vertex_info = .{0, 0, 0, 1},
+        fragment_shader = "shaders/images.frag", 
         fragment_info = .{1, 0, 0, 0},
         vertex_type = "UI_Vertex",
         color_target = .{"swapchain", true},

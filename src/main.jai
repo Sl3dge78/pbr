@@ -107,6 +107,9 @@ on_resources_reload :: (r: *Resource_Info, data: *void) {
     if r.pointer == *resources.prefiltered { 
         render_prefiltered_map(unit_cube, skybox, prefiltered_map);
     }
+    if r.pointer == *resources.brdf_convolution {
+        init_scene_lighting(game_state);
+    }
 }
 
 game_state_destroy :: (using state: *Game_State) {
@@ -151,7 +154,6 @@ player_update :: (using player: *Player, game_state: *Game_State, delta_time: fl
 
     transform.position += velocity * 5 * delta_time;
     console_message("%", transform.position);
-
 }
 
 player_get_camera_matrix :: (using self: *Player) -> Matrix4 {
@@ -262,20 +264,27 @@ game_state_draw :: (using state: *Game_State, frame_data: Frame_Data) {
         SDL_PushGPUFragmentUniformData(frame_data.cmd, 0, *matrices, size_of(type_of(matrices)));
 
         // Bind the shadowmap
-        binding := SDL_GPUTextureSamplerBinding.{ global_renderer.shadowmap, global_renderer.sampler };
-        SDL_BindGPUFragmentSamplers(render_pass, 0, *binding, 1);
+        bind_fragment_texture(render_pass, .SHADOWMAP, global_renderer.shadowmap);
         // Bind the irradiance map
-        binding = SDL_GPUTextureSamplerBinding.{ irradiance_map, global_renderer.sampler };
-        SDL_BindGPUFragmentSamplers(render_pass, 1, *binding, 1);
+        bind_fragment_texture(render_pass, .IRRADIANCE, irradiance_map);
+        bind_fragment_texture(render_pass, .PREFILTERED, prefiltered_map, prefiltered_sampler); 
+        bind_fragment_texture(render_pass, .BRDF_LUT, precomputed_brdf);
         draw_scene(state, render_pass, frame_data.cmd, .COLOR);
+    }
+
+    {
+        imm := immediate_begin(frame_data);
+        defer immediate_end(*imm);
+        SDL_BindGPUGraphicsPipeline(imm.render_pass, resources.sprites);
+        immediate_bind_texture(*imm, precomputed_brdf);
+        draw_2d_rect(*imm, .{0, 0}, .{256, 256});
     }
 }
 
 draw_scene :: (using state: *Game_State, render_pass: *SDL_GPURenderPass, cmd: *SDL_GPUCommandBuffer, kind: Pipeline_Kind) {
 
     SDL_BindGPUGraphicsPipeline(render_pass, resources.static_mesh.pipelines[kind]);
-    binding := SDL_GPUTextureSamplerBinding.{ global_renderer.empty_texture, global_renderer.sampler };
-    SDL_BindGPUFragmentSamplers(render_pass, 2, *binding, 1);
+    bind_fragment_texture(render_pass, .DIFFUSE, global_renderer.empty_texture);
     nb_x := 7;
     nb_y := 7;
     spacing := 2.5;
