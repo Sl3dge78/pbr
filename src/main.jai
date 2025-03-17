@@ -272,7 +272,7 @@ game_state_draw :: (using state: *Game_State, frame_data: Frame_Data) {
         draw_scene(state, render_pass, frame_data.cmd, .COLOR);
     }
 
-    {
+    if 0 {
         imm := immediate_begin(frame_data);
         defer immediate_end(*imm);
         SDL_BindGPUGraphicsPipeline(imm.render_pass, resources.sprites);

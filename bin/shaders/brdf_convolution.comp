@@ -57,6 +57,7 @@ vec2 integrate_brdf(float n_dot_v, float roughness) {
 
 void main() {
     ivec2 pos = ivec2(gl_WorkGroupID.xy);
-    vec2 result = integrate_brdf(float(pos.x) / gl_NumWorkGroups.x , 1.0 - (float(pos.y) / gl_NumWorkGroups.y));
+    // +0.00001 otherwise we get a black pixel column because x = 0
+    vec2 result = integrate_brdf(float(pos.x) / gl_NumWorkGroups.x + 0.00001 , 1.0 - (float(pos.y) / gl_NumWorkGroups.y));
     imageStore(precomputed_BRDF, pos, vec4(result, 0, 0));
 }
