@@ -1,0 +1,14 @@
+{
+	"shader": "shaders/brdf_convolution.comp",
+	"metadata": {
+		"samplers": 0,
+		"readOnlyStorageTextures": 0,
+		"readOnlyStorageBuffers": 0,
+		"readWriteStorageTextures": 1,
+		"readWriteStorageBuffers": 0,
+		"uniformBuffers": 0,
+		"threadCountX": 1,
+		"threadCountY": 1,
+		"threadCountZ": 1
+	}
+}
