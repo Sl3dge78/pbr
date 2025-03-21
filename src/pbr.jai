@@ -191,3 +191,101 @@ cube_map_from_files :: (folder: string) -> Cube_Map {
 
     return result_texture;
 }
+
+load_from_file :: (path: string, mesh: *Mesh, material: *PBR_Material2) -> bool {
+    gltf_data := gltf_parse_file(path);
+    defer gltf_free(*gltf_data);
+    gltf_load_buffers(*gltf_data);
+
+    current_dir := get_working_directory();
+    defer set_working_directory(current_dir);
+
+    dir := path_strip_filename(path);
+    set_working_directory(dir);
+
+    mesh.* = load_mesh_from_gltf_data(gltf_data);
+    success := load_pbr_material_from_gltf_data(gltf_data, material);
+    return success;
+}
+
+PBR_Material2 :: struct {
+    using buffer: PBR_Material_Buffer;
+    albedo_texture: *SDL_GPUTexture;
+    metallic_roughness_texture: *SDL_GPUTexture;
+    normal_texture: *SDL_GPUTexture; // TODO
+    ao_texture: *SDL_GPUTexture;
+}
+
+bind :: (mat: PBR_Material2, cmd: *SDL_GPUCommandBuffer, render_pass: *SDL_GPURenderPass) {
+    SDL_PushGPUFragmentUniformData(cmd, 1, *mat.buffer, size_of(type_of(mat.buffer)));
+    if mat.albedo_texture {
+        bind_fragment_texture(render_pass, .DIFFUSE, mat.albedo_texture);
+    } else {
+        bind_fragment_texture(render_pass, .DIFFUSE, global_renderer.empty_texture);
+    }
+    // if mat.metallic_roughness_texture {
+    //     bind_fragment_texture(render_pass, .METALLIC_ROUGHNESS, mat.metallic_roughness_texture);
+    // } else {
+         // bind_fragment_texture(render_pass, .METALLIC_ROUGHNESS, global_renderer.empty_texture);
+    // }
+    // if mat.ao_texture {
+    //     bind_fragment_texture(render_pass, .AMBIENT_OCCLUSION, mat.ao_texture);
+    // } else {
+         // bind_fragment_texture(render_pass, 5 /*.AMBIENT_OCCLUSION*/, global_renderer.empty_texture);
+    // }
+}
+
+load_texture_from_gltf_data :: (gltf_data: GLTF_Data, info: GLTF_Texture_Info, result: **SDL_GPUTexture) -> bool {
+    texture_info := gltf_data.textures[info.index];
+    image_info := gltf_data.images[texture_info.source];
+    assert(image_info.uri != "", "Unable to load image from other sources than external pngs, yet");
+    result.* = texture_from_file(image_info.uri);
+    return true;
+}
+
+load_pbr_material_from_gltf_data :: (gltf_data: GLTF_Data, material: *PBR_Material2) -> bool {
+    assert(gltf_data.materials.count == 1);
+    mat := gltf_data.materials[0];
+
+    {   // Mettalic Roughness
+        mr := mat.metallic_roughness;
+        material.albedo = .{ mr.base_color_factor[0], mr.base_color_factor[1], mr.base_color_factor[2] };
+        if mr.has_base_color {
+            success := load_texture_from_gltf_data(gltf_data, mr.base_color_texture, *material.albedo_texture);
+            if !success {
+                log_error("Unable to load base color texture");
+                return false;
+            }
+        }
+        material.metallic = mr.metallic_factor;
+        material.roughness = mr.roughness_factor;
+        if mr.has_metallic_roughness {
+            success := load_texture_from_gltf_data(gltf_data, mr.metallic_roughness_texture, *material.metallic_roughness_texture);
+            if !success {
+                log_error("Unable to load metallic_roughness_texture");
+                return false;
+            }
+        }
+    }
+
+    {   // Other
+        if mat.has_normal {
+            success := load_texture_from_gltf_data(gltf_data, mat.normal_texture, *material.normal_texture);
+            if !success {
+                log_error("Unable to load normal_texture");
+                return false;
+            }
+        }
+
+        if mat.has_occlusion {
+            success := load_texture_from_gltf_data(gltf_data, mat.occlusion_texture, *material.ao_texture);
+            if !success {
+                log_error("Unable to load occlusion_texture");
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+

@@ -13,11 +13,14 @@ Game_State :: struct {
     unit_cube: Mesh;
     unit_plane: Mesh;
 
+    scifi_helmet_mesh: Mesh;
+    scifi_helmet_mat: PBR_Material2;
+
     skybox_mode : enum {
         SKYBOX;
         IRRADIANCE;
         PREFILTERED;
-    } = .PREFILTERED;
+    } = .SKYBOX;
     time : float;
 }
 
@@ -96,6 +99,9 @@ game_state_create :: (using state: *Game_State) {
     resources.on_reload = on_resources_reload;
     resources.data = state;
     init_scene_lighting(state);
+
+    success := load_from_file("scifihelmet/scifihelmet.gltf", *scifi_helmet_mesh, *scifi_helmet_mat);
+    assert(success);
 }
 
 on_resources_reload :: (r: *Resource_Info, data: *void) {
@@ -290,7 +296,7 @@ draw_scene :: (using state: *Game_State, render_pass: *SDL_GPURenderPass, cmd: *
     spacing := 2.5;
     for y: 0..nb_x-1 {
         for x: 0..nb_y-1 {
-            mat := PBR_Material.{
+            mat := PBR_Material_Buffer.{
                 albedo = .{0.5, 0, 0},
                 roughness = x.(float) / nb_x,
                 metallic = y.(float) / nb_y,
@@ -303,6 +309,10 @@ draw_scene :: (using state: *Game_State, render_pass: *SDL_GPURenderPass, cmd: *
             draw(sphere_mesh, render_pass);
         }
     }
+
+    bind(scifi_helmet_mat, cmd, render_pass);
+    push_transform(make_translation_matrix4(.{0, 0, 10}), cmd);
+    draw(scifi_helmet_mesh, render_pass);
 }
 
 main :: () {
@@ -320,7 +330,7 @@ main :: () {
 
 #import "Basic"()(MEMORY_DEBUGGER=true);
 #import "Math";
-#import "sl3dge-jai";
+#load "../modules/sl3dge-jai/module.jai";
 #import "stb_image";
 
 #load "pbr.jai";

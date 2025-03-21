@@ -24,10 +24,12 @@ layout(set = FRAG_UNIFORM_SET, binding = 1) uniform Material_t {
 } Material;
 
 layout(set = FRAG_SAMPLER_SET, binding = 0) uniform sampler2D shadow_map;
-layout(set = FRAG_SAMPLER_SET, binding = 1) uniform sampler2D diffuse;
+layout(set = FRAG_SAMPLER_SET, binding = 1) uniform sampler2D diffuse_texture;
 layout(set = FRAG_SAMPLER_SET, binding = 2) uniform samplerCube irradiance_map;
 layout(set = FRAG_SAMPLER_SET, binding = 3) uniform samplerCube prefiltered_map;
 layout(set = FRAG_SAMPLER_SET, binding = 4) uniform sampler2D brdf_lut;
+// layout(set = FRAG_SAMPLER_SET, binding = 5) uniform sampler2D metallic_roughness_texture;
+// layout(set = FRAG_SAMPLER_SET, binding = 6) uniform sampler2D ao_texture;
 
 const int pcf_count = 4;
 const int pcf_total_texels = (pcf_count * 2 + 1) * (pcf_count * 2 + 1);
@@ -100,8 +102,17 @@ void main() {
     vec3 normal = normalize(In.normal);
     vec3 view = normalize(camera.camera_position - position);
 
-    vec3 F0 = mix(vec3(0.04), Material.albedo, Material.metallic);
+    vec3 albedo = texture(diffuse_texture, In.uv).rgb * Material.albedo;
 
+    // vec2 mr = texture(metallic_roughness_texture, In.uv).rg;
+    // float metallic = Material.metallic * mr.r;
+    // float roughness = Material.roughness * mr.g;
+    float metallic = Material.metallic;
+    float roughness = Material.roughness;
+    // float ambient_occlusion = Material.ambient_occlusion * texture(ao_texture, In.uv).r;
+    float ambient_occlusion = Material.ambient_occlusion;
+
+    vec3 F0 = mix(vec3(0.04), albedo, metallic);
 
     vec3 lo = vec3(0.0);
     for(int i = 0; i < camera.light_count; i++) {
@@ -122,36 +133,36 @@ void main() {
         
         vec3 half_way_vector = normalize(view + light_dir);
 
-        float NDF = distribution(normal, half_way_vector, Material.roughness);
-        float G   = geometry(normal, view, light_dir, Material.roughness);
+        float NDF = distribution(normal, half_way_vector, roughness);
+        float G   = geometry(normal, view, light_dir, roughness);
         vec3  F   = fresnel(max(dot(half_way_vector, view), 0.0), F0);
 
         vec3 kD = vec3(1.0) - F;
-        kD *= 1.0 - Material.metallic;
+        kD *= 1.0 - metallic;
 
         vec3 a = NDF * G * F;
         float b = 4.0 * max(dot(normal, view), 0.0) * cos_theta;
         vec3 specular = a / (b + 0.0001); 
 
-        lo += (kD * Material.albedo / PI + specular) * radiance * cos_theta;
+        lo += (kD * albedo / PI + specular) * radiance * cos_theta;
     }
 
     // Ambient -- IBL
-    vec3 F = fresnel_roughness(max(dot(normal, view), 0.0), F0, Material.roughness);
+    vec3 F = fresnel_roughness(max(dot(normal, view), 0.0), F0, roughness);
     vec3 kS = F;
     vec3 kD = 1.0 - kS;
-    kD *= 1.0 - Material.metallic;
+    kD *= 1.0 - metallic;
 
     vec3 irradiance = texture(irradiance_map, normal).rgb;
-    vec3 diffuse = irradiance * Material.albedo;
+    vec3 diffuse = irradiance * albedo;
 
     vec3 r = reflect(-view, normal);
     const float MAX_REFLECTION_LOD = 4.0;
-    vec3 prefiltered_color = textureLod(prefiltered_map, r, Material.roughness * MAX_REFLECTION_LOD).rgb;
-    vec2 envBRDF = texture(brdf_lut, vec2(max(dot(normal, view), 0.0), Material.roughness)).rg;
+    vec3 prefiltered_color = textureLod(prefiltered_map, r, roughness * MAX_REFLECTION_LOD).rgb;
+    vec2 envBRDF = texture(brdf_lut, vec2(max(dot(normal, view), 0.0), roughness)).rg;
     vec3 specular = prefiltered_color * (F * envBRDF.x + envBRDF.y);
 
-    vec3 ambient = (kD * diffuse + specular) * Material.ambient_occlusion;
+    vec3 ambient = (kD * diffuse + specular) * ambient_occlusion;
     vec3 color = ambient + lo;
 
     // Gamma
