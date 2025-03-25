@@ -3,11 +3,10 @@
 #include "common.glsl"
 
 layout(location = 0) in struct {
-    vec4 vertex_color;
-    vec3 normal;
     vec2 uv;
     vec4 pos_light_space;
     vec4 world_position;
+    mat3 TBN;
 } In;
 
 layout(location = 0) out vec4 out_color;
@@ -20,16 +19,16 @@ layout(set = FRAG_UNIFORM_SET, binding = 1) uniform Material_t {
     vec3 albedo;
     float metallic;
     float roughness;
-    float ambient_occlusion;
 } Material;
 
 layout(set = FRAG_SAMPLER_SET, binding = 0) uniform sampler2D shadow_map;
-layout(set = FRAG_SAMPLER_SET, binding = 1) uniform sampler2D diffuse_texture;
-layout(set = FRAG_SAMPLER_SET, binding = 2) uniform samplerCube irradiance_map;
-layout(set = FRAG_SAMPLER_SET, binding = 3) uniform samplerCube prefiltered_map;
-layout(set = FRAG_SAMPLER_SET, binding = 4) uniform sampler2D brdf_lut;
-// layout(set = FRAG_SAMPLER_SET, binding = 5) uniform sampler2D metallic_roughness_texture;
-// layout(set = FRAG_SAMPLER_SET, binding = 6) uniform sampler2D ao_texture;
+layout(set = FRAG_SAMPLER_SET, binding = 1) uniform samplerCube irradiance_map;
+layout(set = FRAG_SAMPLER_SET, binding = 2) uniform samplerCube prefiltered_map;
+layout(set = FRAG_SAMPLER_SET, binding = 3) uniform sampler2D brdf_lut;
+layout(set = FRAG_SAMPLER_SET, binding = 4) uniform sampler2D diffuse_texture;
+layout(set = FRAG_SAMPLER_SET, binding = 5) uniform sampler2D normal_map;
+layout(set = FRAG_SAMPLER_SET, binding = 6) uniform sampler2D metallic_roughness_texture;
+layout(set = FRAG_SAMPLER_SET, binding = 7) uniform sampler2D ao_texture;
 
 const int pcf_count = 4;
 const int pcf_total_texels = (pcf_count * 2 + 1) * (pcf_count * 2 + 1);
@@ -41,12 +40,12 @@ const float constant = 1.0;
 const float linear = 0.5;
 const float quadratic = 0.02;
 
-float shadow(vec4 shadow_coord, vec3 l) {
+float shadow(vec4 shadow_coord, vec3 l, vec3 normal) {
     vec3 proj_coords = In.pos_light_space.xyz / In.pos_light_space.w;
     vec2 uv = proj_coords.xy * 0.5 + 0.5;
     uv.y = 1 - uv.y;
     float current = proj_coords.z;
-    float x = 1.0 - max(dot(In.normal, l), 0.0);
+    float x = 1.0 - max(dot(normal, l), 0.0);
     float bias = max(2.5 * x, 1.0) * texel_size;
 
     int total = 0;
@@ -99,18 +98,17 @@ vec3 fresnel_roughness(float cos_theta, vec3 F0, float roughness) {
 void main() {
 
     vec3 position = In.world_position.xyz;
-    vec3 normal = normalize(In.normal);
+    vec3 normal = texture(normal_map, In.uv).rgb * 2.0 - 1.0;
+    // normal = normalize(In.TBN * normal);
+    normal = normalize(In.TBN * vec3(0, 0, 1));
     vec3 view = normalize(camera.camera_position - position);
 
     vec3 albedo = texture(diffuse_texture, In.uv).rgb * Material.albedo;
 
-    // vec2 mr = texture(metallic_roughness_texture, In.uv).rg;
-    // float metallic = Material.metallic * mr.r;
-    // float roughness = Material.roughness * mr.g;
-    float metallic = Material.metallic;
-    float roughness = Material.roughness;
-    // float ambient_occlusion = Material.ambient_occlusion * texture(ao_texture, In.uv).r;
-    float ambient_occlusion = Material.ambient_occlusion;
+    vec2 mr = texture(metallic_roughness_texture, In.uv).rg;
+    float metallic = Material.metallic * mr.r;
+    float roughness = Material.roughness * mr.g;
+    float ambient_occlusion = texture(ao_texture, In.uv).r;
 
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
 
@@ -165,7 +163,7 @@ void main() {
     vec3 ambient = (kD * diffuse + specular) * ambient_occlusion;
     vec3 color = ambient + lo;
 
-    // Gamma
     out_color = vec4(color, 1.0);
+    // out_color = vec4(vec3(roughness), 1.0);
 }
 

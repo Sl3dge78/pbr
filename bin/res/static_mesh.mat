@@ -8,7 +8,7 @@
 	},
 	"fragment_shader": "shaders/color.frag",
 	"fragment_info": {
-		"samplers": 5,
+		"samplers": 8,
 		"storageTextures": 0,
 		"storageBuffers": 0,
 		"uniformBuffers": 2

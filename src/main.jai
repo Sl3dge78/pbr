@@ -100,7 +100,7 @@ game_state_create :: (using state: *Game_State) {
     resources.data = state;
     init_scene_lighting(state);
 
-    success := load_from_file("scifihelmet/scifihelmet.gltf", *scifi_helmet_mesh, *scifi_helmet_mat);
+    success := load_from_file("scifihelmet/SciFiHelmet.gltf", *scifi_helmet_mesh, *scifi_helmet_mat);
     assert(success);
 }
 
@@ -125,6 +125,9 @@ game_state_destroy :: (using state: *Game_State) {
     destroy(irradiance_map);
     destroy(prefiltered_map);
     destroy(*unit_cube);
+    destroy(*unit_plane);
+    destroy(*scifi_helmet_mesh);
+    destroy(*scifi_helmet_mat);
     SDL_ReleaseGPUSampler(global_renderer.device, prefiltered_sampler);
 }
 
@@ -296,13 +299,11 @@ draw_scene :: (using state: *Game_State, render_pass: *SDL_GPURenderPass, cmd: *
     spacing := 2.5;
     for y: 0..nb_x-1 {
         for x: 0..nb_y-1 {
-            mat := PBR_Material_Buffer.{
+            bind(.{ buffer = .{
                 albedo = .{0.5, 0, 0},
                 roughness = x.(float) / nb_x,
                 metallic = y.(float) / nb_y,
-                ambient_occlusion = 1.0,
-            };
-            SDL_PushGPUFragmentUniformData(cmd, 1, *mat, size_of(type_of(mat)));
+            } }, cmd, render_pass);
             x2 : float = (x - (nb_x / 2)) * spacing;
             y2 : float = (y - (nb_y / 2)) * spacing;
             push_transform(make_translation_matrix4(.{x2, y2, -2}), cmd);

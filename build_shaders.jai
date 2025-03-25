@@ -9,7 +9,7 @@
         vertex_shader = "shaders/static.vert",
         vertex_info = .{0, 0, 0, 2},
         fragment_shader = "shaders/color.frag", 
-        fragment_info = .{samplers = 5, storageTextures = 0, storageBuffers = 0, uniformBuffers = 2},
+        fragment_info = .{samplers = 8, storageTextures = 0, storageBuffers = 0, uniformBuffers = 2},
         vertex_type = "Standard_Vertex",
         color_target = .{"swapchain", false},
         depth_target = true

@@ -211,28 +211,35 @@ load_from_file :: (path: string, mesh: *Mesh, material: *PBR_Material2) -> bool 
 PBR_Material2 :: struct {
     using buffer: PBR_Material_Buffer;
     albedo_texture: *SDL_GPUTexture;
+    normal_texture: *SDL_GPUTexture;
     metallic_roughness_texture: *SDL_GPUTexture;
-    normal_texture: *SDL_GPUTexture; // TODO
     ao_texture: *SDL_GPUTexture;
 }
 
 bind :: (mat: PBR_Material2, cmd: *SDL_GPUCommandBuffer, render_pass: *SDL_GPURenderPass) {
     SDL_PushGPUFragmentUniformData(cmd, 1, *mat.buffer, size_of(type_of(mat.buffer)));
+    bindings : [4]SDL_GPUTextureSamplerBinding;
     if mat.albedo_texture {
-        bind_fragment_texture(render_pass, .DIFFUSE, mat.albedo_texture);
+        bindings[0] = .{ mat.albedo_texture, global_renderer.sampler};
     } else {
-        bind_fragment_texture(render_pass, .DIFFUSE, global_renderer.empty_texture);
+        bindings[0] = .{ global_renderer.empty_texture, global_renderer.sampler};
     }
-    // if mat.metallic_roughness_texture {
-    //     bind_fragment_texture(render_pass, .METALLIC_ROUGHNESS, mat.metallic_roughness_texture);
-    // } else {
-         // bind_fragment_texture(render_pass, .METALLIC_ROUGHNESS, global_renderer.empty_texture);
-    // }
-    // if mat.ao_texture {
-    //     bind_fragment_texture(render_pass, .AMBIENT_OCCLUSION, mat.ao_texture);
-    // } else {
-         // bind_fragment_texture(render_pass, 5 /*.AMBIENT_OCCLUSION*/, global_renderer.empty_texture);
-    // }
+    if mat.normal_texture {
+        bindings[1] = .{ mat.normal_texture, global_renderer.sampler};
+    } else {
+        bindings[1] = .{ global_renderer.empty_texture, global_renderer.sampler};
+    }
+    if mat.metallic_roughness_texture {
+        bindings[2] = .{ mat.metallic_roughness_texture, global_renderer.sampler};
+    } else {
+        bindings[2] = .{ global_renderer.empty_texture, global_renderer.sampler};
+    }
+    if mat.ao_texture {
+        bindings[3] = .{ mat.ao_texture, global_renderer.sampler};
+    } else {
+        bindings[3] = .{ global_renderer.empty_texture, global_renderer.sampler};
+    }
+    SDL_BindGPUFragmentSamplers(render_pass, xx Texture_Binding.DIFFUSE, bindings.data, bindings.count);
 }
 
 load_texture_from_gltf_data :: (gltf_data: GLTF_Data, info: GLTF_Texture_Info, result: **SDL_GPUTexture) -> bool {
@@ -257,6 +264,7 @@ load_pbr_material_from_gltf_data :: (gltf_data: GLTF_Data, material: *PBR_Materi
                 return false;
             }
         }
+
         material.metallic = mr.metallic_factor;
         material.roughness = mr.roughness_factor;
         if mr.has_metallic_roughness {
@@ -265,7 +273,7 @@ load_pbr_material_from_gltf_data :: (gltf_data: GLTF_Data, material: *PBR_Materi
                 log_error("Unable to load metallic_roughness_texture");
                 return false;
             }
-        }
+        } 
     }
 
     {   // Other
@@ -289,3 +297,17 @@ load_pbr_material_from_gltf_data :: (gltf_data: GLTF_Data, material: *PBR_Materi
     return true;
 }
 
+destroy :: (mat: *PBR_Material2) {
+    if mat.albedo_texture {
+        destroy(mat.albedo_texture);
+    }
+    if mat.normal_texture {
+        destroy(mat.normal_texture);
+    }
+    if mat.metallic_roughness_texture {
+        destroy(mat.metallic_roughness_texture);
+    }
+    if mat.ao_texture {
+        destroy(mat.ao_texture);
+    }
+}
