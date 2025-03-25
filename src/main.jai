@@ -207,10 +207,14 @@ game_state_input_event :: (using state: *Game_State, event: SDL_Event) {
 game_state_draw :: (using state: *Game_State, frame_data: Frame_Data) {
     sun_dir := unit_vector(.{-1, -1, -1});
     lights : [16]Light;
-    lights[0] = .{ .POINT, .{-10, 10, 10}, .{300.0, 300.0, 300.0}};
-    lights[1] = .{ .POINT, .{10, 10, 10}, .{300.0, 300.0, 300.0}};
-    lights[2] = .{ .POINT, .{-10, -10, 10}, .{300.0, 300.0, 300.0}};
-    lights[3] = .{ .POINT, .{10, -10, 10}, .{300.0, 300.0, 300.0}};
+    #if 0 {
+        lights[0] = .{ .DIRECTIONAL, sun_dir, .{3.0, 3.0, 3.0}};
+    } else {
+        lights[0] = .{ .POINT, .{-10, 10, 10}, .{300.0, 300.0, 300.0}};
+        lights[1] = .{ .POINT, .{10, 10, 10}, .{300.0, 300.0, 300.0}};
+        lights[2] = .{ .POINT, .{-10, -10, 10}, .{300.0, 300.0, 300.0}};
+        lights[3] = .{ .POINT, .{10, -10, 10}, .{300.0, 300.0, 300.0}};
+    }
 
     size:: 40;
     light_proj := orthographic_projection_matrix(-size, size, -size, size, -size, size, true);
@@ -293,7 +297,6 @@ game_state_draw :: (using state: *Game_State, frame_data: Frame_Data) {
 draw_scene :: (using state: *Game_State, render_pass: *SDL_GPURenderPass, cmd: *SDL_GPUCommandBuffer, kind: Pipeline_Kind) {
 
     SDL_BindGPUGraphicsPipeline(render_pass, resources.static_mesh.pipelines[kind]);
-    bind_fragment_texture(render_pass, .DIFFUSE, global_renderer.empty_texture);
     nb_x := 7;
     nb_y := 7;
     spacing := 2.5;
@@ -311,9 +314,11 @@ draw_scene :: (using state: *Game_State, render_pass: *SDL_GPURenderPass, cmd: *
         }
     }
 
+    /*
     bind(scifi_helmet_mat, cmd, render_pass);
     push_transform(make_translation_matrix4(.{0, 0, 10}), cmd);
     draw(scifi_helmet_mesh, render_pass);
+    */
 }
 
 main :: () {
