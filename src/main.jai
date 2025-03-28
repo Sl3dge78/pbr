@@ -208,7 +208,8 @@ game_state_input_event :: (using state: *Game_State, event: SDL_Event) {
 game_state_draw :: (using state: *Game_State, frame_data: Frame_Data) {
     sun_dir := unit_vector(.{-1, -1, -1});
     lights : [16]Light;
-    #if 0 {
+    SUN :: true;
+    #if SUN {
         lights[0] = .{ .DIRECTIONAL, sun_dir, .{3.0, 3.0, 3.0}};
     } else {
         lights[0] = .{ .POINT, .{-10, 10, 10}, .{300.0, 300.0, 300.0}};
@@ -223,15 +224,27 @@ game_state_draw :: (using state: *Game_State, frame_data: Frame_Data) {
     light_matrix := light_proj * light_view;
     view := player_get_camera_matrix(*state.player);
 
-    matrices := Global_Matrices.{
-        camera_position = player.transform.position + Vector3.{0, Player.EYE_HEIGHT, 0},
-        projection = transpose(global_renderer.projection),
-        view = transpose(view),
-        sun = transpose(light_matrix),
-        lights = lights,
-        light_count = 4,
-        time = time,
-    };
+    #if SUN {
+        matrices := Global_Matrices.{
+            camera_position = player.transform.position + Vector3.{0, Player.EYE_HEIGHT, 0},
+            projection = transpose(global_renderer.projection),
+            view = transpose(view),
+            sun = transpose(light_matrix),
+            lights = lights,
+            light_count = 1,
+            time = time,
+        };
+    } else { 
+        matrices := Global_Matrices.{
+            camera_position = player.transform.position + Vector3.{0, Player.EYE_HEIGHT, 0},
+            projection = transpose(global_renderer.projection),
+            view = transpose(view),
+            sun = transpose(light_matrix),
+            lights = lights,
+            light_count = 4,
+            time = time,
+        };
+    }
 
     shadow_matrices := matrices;
     shadow_matrices.projection = transpose(light_proj);
