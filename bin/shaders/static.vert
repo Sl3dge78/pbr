@@ -28,8 +28,10 @@ void main() {
     vec3 bitangent = cross(in_normal, in_tangent);
     mat3 normal_matrix = mat3(transpose(inv_transform));
     vec3 T = normalize(normal_matrix * in_tangent);
-    vec3 B = normalize(normal_matrix * bitangent);
     vec3 N = normalize(normal_matrix * in_normal);
+    T = normalize(T - dot(T, N) * N);
+    vec3 B = normalize(cross(N, T));
+
     Out.TBN = mat3(T, B, N);
 
     Out.world_position = world_position;

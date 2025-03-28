@@ -29,6 +29,7 @@ layout(set = FRAG_SAMPLER_SET, binding = 4) uniform sampler2D diffuse_texture;
 layout(set = FRAG_SAMPLER_SET, binding = 5) uniform sampler2D normal_map;
 layout(set = FRAG_SAMPLER_SET, binding = 6) uniform sampler2D metallic_roughness_texture;
 layout(set = FRAG_SAMPLER_SET, binding = 7) uniform sampler2D ao_texture;
+layout(set = FRAG_SAMPLER_SET, binding = 8) uniform sampler2D emission_texture;
 
 const int pcf_count = 4;
 const int pcf_total_texels = (pcf_count * 2 + 1) * (pcf_count * 2 + 1);
@@ -99,16 +100,17 @@ void main() {
 
     vec3 position = In.world_position.xyz;
     vec3 normal = texture(normal_map, In.uv).rgb * 2.0 - 1.0;
-    // normal = normalize(In.TBN * normal);
-    normal = normalize(In.TBN * vec3(0, 0, 1));
+    normal = normalize(In.TBN * normal);
+    // normal = normalize(In.TBN * vec3(0, 0, 1));
     vec3 view = normalize(camera.camera_position - position);
 
     vec3 albedo = texture(diffuse_texture, In.uv).rgb * Material.albedo;
 
-    vec2 mr = texture(metallic_roughness_texture, In.uv).rg;
-    float metallic = Material.metallic * mr.r;
+    vec3 mr = texture(metallic_roughness_texture, In.uv).rgb;
+    float metallic = Material.metallic * mr.b;
     float roughness = Material.roughness * mr.g;
     float ambient_occlusion = texture(ao_texture, In.uv).r;
+    vec3 emission = texture(emission_texture, In.uv).rgb;
 
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
 
@@ -161,9 +163,18 @@ void main() {
     vec3 specular = prefiltered_color * (F * envBRDF.x + envBRDF.y);
 
     vec3 ambient = (kD * diffuse + specular) * ambient_occlusion;
-    vec3 color = ambient + lo;
+    vec3 color = ambient + lo + emission;
 
     out_color = vec4(color, 1.0);
+
     // out_color = vec4(vec3(roughness), 1.0);
+    // out_color = vec4(vec3(metallic), 1.0);
+    // out_color = vec4(albedo, 1.0);
+    // out_color = vec4(mr, 1.0);
+    // out_color = vec4(In.uv, 0.0, 1.0);
+    // out_color = vec4(texture(normal_map, In.uv).rgb, 1.0);
+    // out_color = vec4(normal, 1.0);
+    // out_color = vec4(vec3(ambient_occlusion), 1.0);
+    // out_color = vec4(ambient, 1.0);
 }
 

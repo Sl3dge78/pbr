@@ -13,8 +13,8 @@ Game_State :: struct {
     unit_cube: Mesh;
     unit_plane: Mesh;
 
-    scifi_helmet_mesh: Mesh;
-    scifi_helmet_mat: PBR_Material2;
+    scifi_helmet: []Renderable_Mesh;
+    damaged_helmet: []Renderable_Mesh;
 
     skybox_mode : enum {
         SKYBOX;
@@ -38,8 +38,8 @@ Player :: struct {
 Cube_Map :: *SDL_GPUTexture;
 
 game_state_create :: (using state: *Game_State) {
-    sphere_mesh = load_mesh_from_file("res/sphere.glb");
-    player.transform.position = .{25, 25, 75};
+    assert(load_from_file("res/sphere.glb", *sphere_mesh));
+    player.transform.position = .{0, 0, 15};
     offset : *Global_Matrices = xx 0;
     skybox = cube_map_from_files("res/env3");
 
@@ -100,7 +100,9 @@ game_state_create :: (using state: *Game_State) {
     resources.data = state;
     init_scene_lighting(state);
 
-    success := load_from_file("scifihelmet/SciFiHelmet.gltf", *scifi_helmet_mesh, *scifi_helmet_mat);
+    success := load_from_file("scifihelmet/SciFiHelmet.gltf", *scifi_helmet);
+    assert(success);
+    success = load_from_file("DamagedHelmet.glb", *damaged_helmet);
     assert(success);
 }
 
@@ -126,8 +128,8 @@ game_state_destroy :: (using state: *Game_State) {
     destroy(prefiltered_map);
     destroy(*unit_cube);
     destroy(*unit_plane);
-    destroy(*scifi_helmet_mesh);
-    destroy(*scifi_helmet_mat);
+    destroy(*scifi_helmet);
+    destroy(*damaged_helmet);
     SDL_ReleaseGPUSampler(global_renderer.device, prefiltered_sampler);
 }
 
@@ -162,7 +164,6 @@ player_update :: (using player: *Player, game_state: *Game_State, delta_time: fl
     if key_down(.SDL_SCANCODE_Q) then velocity -= .{0, 1, 0} * speed;
 
     transform.position += velocity * 5 * delta_time;
-    console_message("%", transform.position);
 }
 
 player_get_camera_matrix :: (using self: *Player) -> Matrix4 {
@@ -295,30 +296,37 @@ game_state_draw :: (using state: *Game_State, frame_data: Frame_Data) {
 }
 
 draw_scene :: (using state: *Game_State, render_pass: *SDL_GPURenderPass, cmd: *SDL_GPUCommandBuffer, kind: Pipeline_Kind) {
-
     SDL_BindGPUGraphicsPipeline(render_pass, resources.static_mesh.pipelines[kind]);
-    nb_x := 7;
-    nb_y := 7;
-    spacing := 2.5;
-    for y: 0..nb_x-1 {
-        for x: 0..nb_y-1 {
-            bind(.{ buffer = .{
-                albedo = .{0.5, 0, 0},
-                roughness = x.(float) / nb_x,
-                metallic = y.(float) / nb_y,
-            } }, cmd, render_pass);
-            x2 : float = (x - (nb_x / 2)) * spacing;
-            y2 : float = (y - (nb_y / 2)) * spacing;
-            push_transform(make_translation_matrix4(.{x2, y2, -2}), cmd);
-            draw(sphere_mesh, render_pass);
+
+    #if 0 {
+        nb_x := 7;
+        nb_y := 7;
+        spacing := 2.5;
+        for y: 0..nb_x-1 {
+            for x: 0..nb_y-1 {
+                mat := default_material();
+                mat.buffer = .{
+                    albedo = .{0.5, 0, 0},
+                    roughness = x.(float) / nb_x,
+                    metallic = y.(float) / nb_y,
+                };
+                bind(mat, cmd, render_pass);
+                x2 : float = (x - (nb_x / 2)) * spacing;
+                y2 : float = (y - (nb_y / 2)) * spacing;
+                push_transform(make_translation_matrix4(.{x2, y2, -2}), cmd);
+                draw(sphere_mesh, render_pass);
+            }
         }
+
+        bind(scifi_helmet[0].material, cmd, render_pass);
+        push_transform(make_translation_matrix4(.{0, 0, 10}), cmd);
+        draw(scifi_helmet[0].mesh, render_pass);
     }
 
-    /*
-    bind(scifi_helmet_mat, cmd, render_pass);
-    push_transform(make_translation_matrix4(.{0, 0, 10}), cmd);
-    draw(scifi_helmet_mesh, render_pass);
-    */
+        bind(damaged_helmet[0].material, cmd, render_pass);
+        mat := rotate(make_translation_matrix4(.{0, 0, 0}), Quaternion.{ 0.707106, 0, 0, 0.707106});
+        push_transform(mat, cmd);
+        draw(damaged_helmet[0].mesh, render_pass);
 }
 
 main :: () {
